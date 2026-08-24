@@ -1,80 +1,125 @@
 # RentWise AI
 
-A portfolio-ready AI rental marketplace experience built with a three-layer architecture:
+A portfolio-ready rental marketplace and AI assistant built as a production-style monorepo. It combines a premium search UI, an AI-enabled rental insights workflow, and a U.S. city search flow that works without a paid vendor key.
 
-- Frontend: live search UI and experience layer
-- API: FastAPI backend with real-time streaming and rental search endpoints
-- AI: agentic workflow and market insight layer
+## Product summary
 
-This project is designed to stand out in AI, product, and software engineering portfolios because it combines user experience, backend orchestration, and AI reasoning in a single product story.
+- Web app: Next.js frontend for the search experience
+- API: FastAPI backend for rental search, geocoding, and AI routes
+- AI layer: retrieval and LangGraph-style orchestration for market-aware answers
+- Data path: OpenStreetMap geocoding plus a public fallback feed for demo-ready usage
 
-## Project structure
+## Repository
+
+- GitHub: https://github.com/ManeeshChintalapudi12/rental-searching-agent.git
+
+## Monorepo structure
 
 ```text
 rental-searching-app/
-├── frontend/       # Next.js app for the product UI
-├── api/            # FastAPI service and rental APIs
-├── ai/             # AI orchestration, prompt workflows, and assistant logic
-├── backend/        # working backend implementation
-├── rental-app/     # legacy/demo app used during iteration
-├── README.md
+├── apps/
+│   ├── web/            # Next.js frontend
+│   ├── api/            # FastAPI backend
+│   └── ai/             # AI/RAG utilities and workflow layer
+├── packages/
+│   └── shared/         # future shared config/types
+├── .env.example
+├── .gitignore
 ├── docker-compose.yml
-└── .env.example
+├── README.md
+├── package.json
+└── package-lock.json
 ```
 
-## Why this is portfolio-friendly
+## Local development
 
-- real-time market feed using Server-Sent Events
-- city-based search across U.S. locations
-- no vendor key required for a usable demo experience
-- production-style layered architecture for frontend, API, and AI
-- strong story for LinkedIn and AI role interviews
-
-## Run locally
-
-### Frontend
+### 1) Install root dependencies
 
 ```powershell
-cd "c:\rental-searching-app\rental-app"
-npx next dev -H 127.0.0.1 -p 3000
+cd "c:\rental-searching-app"
+npm install
 ```
 
-### API
+### 2) Start the app locally
 
 ```powershell
-cd "c:\rental-searching-app\backend"
-.\.venv\Scripts\Activate.ps1
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+cd "c:\rental-searching-app"
+npm run dev
 ```
 
-### Live endpoints
+This starts the frontend and backend together in a development-friendly monorepo flow.
 
+### 3) Run API tests
+
+```powershell
+cd "c:\rental-searching-app"
+python -m pytest -q apps/api/tests
+```
+
+### Useful URLs
+
+- http://localhost:3000
 - http://127.0.0.1:8000/health
+- http://127.0.0.1:8000/api/public-rentals?city=Danville&state=CA&limit=5
 - http://127.0.0.1:8000/api/live-feed
-- http://127.0.0.1:8000/api/public-rentals?city=Seattle&state=WA&limit=5
 
-## AI layer
+## Production deployment readiness
 
-The AI folder is where prompt pipelines, agents, and structured reasoning logic can live for:
+This repo is aligned for a real deployment workflow:
 
-- intent parsing
-- listing ranking
-- deal-quality summaries
-- conversational recommendations
+- separate app boundaries for web, API, and AI
+- environment-driven configuration via `.env` files
+- Docker support for backend and frontend containerization
+- workspace-based setup for scalable multi-app development
 
-## Portfolio positioning
+### Frontend deployment
 
-This project demonstrates:
+Use Vercel and set:
 
-- full-stack product thinking
-- backend API design
-- real-time product UX
-- AI integration strategy
-- deployment-ready architecture and storytelling for AI-focused roles
+```env
+NEXT_PUBLIC_API_URL=https://your-backend-url
+```
 
-## Next milestone ideas
+### Backend deployment
 
-- connect to a verified rental provider API with key support
-- store search history in a database
-- add auth and saved homes
-- add streaming AI chat responses for candidate interviews and demos
+Use Render or Railway and expose the FastAPI app on port 8000.
+
+```bash
+cd apps/api
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### Docker
+
+```bash
+docker compose up --build
+```
+
+## AI story
+
+The application includes:
+
+- retrieval-augmented generation
+- vector document ingestion
+- LangGraph-style orchestration pattern
+- market-aware answers for U.S. rental searches
+
+This makes the project solid as a portfolio-ready demo for AI product and full-stack roles.
+
+## Real-data path
+
+The current implementation uses a no-key public fallback:
+
+- location lookup via OpenStreetMap Nominatim
+- U.S. city/state matching for searchable markets
+- public market feed for demo-ready results
+- adapter-ready structure for future licensed data APIs
+
+## Next milestones
+
+- replace the public fallback with a real licensed rental data source
+- add auth, saved homes, and user profiles
+- stream AI responses in real time
+- deploy frontend and backend to host environments
+- refine the brand and product story for LinkedIn and interviews

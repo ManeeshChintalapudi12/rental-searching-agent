@@ -1,3 +1,0 @@
-import type {Metadata} from "next";import "./globals.css";
-export const metadata:Metadata={metadataBase:new URL("https://rentwise-ai.maneeshchintalapudi.chatgpt.site"),title:"RentWise AI — Find the real best rental price",description:"Compare apartments and rental vehicles with every mandatory fee included, powered by a grounded AI rental assistant.",icons:{icon:"/favicon.svg"},openGraph:{title:"RentWise AI",description:"One search. Every rental. The real best price.",images:["/og.png"]},twitter:{card:"summary_large_image",title:"RentWise AI",description:"One search. Every rental. The real best price.",images:["/og.png"]}};
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}</body></html>}
