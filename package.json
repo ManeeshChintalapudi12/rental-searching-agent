@@ -2,18 +2,14 @@
   "name": "rentwise-ai",
   "private": true,
   "version": "1.0.0",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace apps/web\" \"npm run dev --workspace apps/api\"",
-    "build": "npm run build --workspace apps/web",
-    "lint": "npm run lint --workspace apps/web",
-    "test:api": "cd apps/api && python -m pytest -q tests",
+    "dev": "concurrently \"npm --prefix frontend run dev\" \"cd backend && c:/rental-searching-app/.venv/Scripts/python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000\"",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "test:api": "cd backend && c:/rental-searching-app/.venv/Scripts/python.exe -m pytest -q tests",
     "docker:up": "docker compose up --build",
-    "start:api": "cd apps/api && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
-    "start:web": "npm run start --workspace apps/web"
+    "start:api": "cd backend && c:/rental-searching-app/.venv/Scripts/python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "start:web": "npm --prefix frontend run start"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

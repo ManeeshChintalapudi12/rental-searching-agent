@@ -1,5 +1,5 @@
-from ai.langgraph.agent import LangGraphRentalAgent
-from ai.rag import BedrockEmbeddingAdapter, OpenAIEmbeddingAdapter, RAGPipeline, VectorDBAdapter, VectorDocument
+from agentic.ai.langgraph.agent import LangGraphRentalAgent
+from agentic.ai.rag import BedrockEmbeddingAdapter, OpenAIEmbeddingAdapter, RAGPipeline, VectorDBAdapter, VectorDocument
 
 
 class RentalAIStack:

@@ -1,4 +1,4 @@
-from ai.rag import RAGPipeline, VectorDocument
+from agentic.ai.rag import RAGPipeline, VectorDocument
 
 
 def test_rag_pipeline_handles_local_documents() -> None:
