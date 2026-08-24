@@ -1,23 +1,9 @@
-# Node / Next.js
 node_modules/
 .next/
 out/
-
-# Python
-.venv/
-__pycache__/
-*.pyc
-.env
-.env.*
-
-# OS/editor
-.DS_Store
-.vscode/
-
-# Logs
+.env*
 npm-debug.log*
-pnpm-debug.log*
-
-dist/
-build/
-coverage/
+backend/.venv/
+backend/.env
+__pycache__/
+.pytest_cache/

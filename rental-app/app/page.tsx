@@ -30,6 +30,14 @@ const fallbackData: Listing[] = [
 ];
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const SAMPLE_CITIES = [
+  "Danville, CA",
+  "Seattle, WA",
+  "Miami, FL",
+  "Austin, TX",
+  "Denver, CO",
+  "New York, NY",
+];
 
 const I = ({ n, fill = false }: { n: string; fill?: boolean }) => (
   <svg
@@ -61,7 +69,7 @@ const I = ({ n, fill = false }: { n: string; fill?: boolean }) => (
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>("apartments");
-  const [place, setPlace] = useState("Frisco, TX");
+  const [place, setPlace] = useState("Danville, CA");
   const [saved, setSaved] = useState<number[]>([3]);
   const [compare, setCompare] = useState<number[]>([]);
   const [map, setMap] = useState(true);
@@ -70,6 +78,27 @@ export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [note, setNote] = useState("I found 3 strong matches and included mandatory fees in every total.");
   const [listings, setListings] = useState<Listing[]>(fallbackData);
+  const [mounted, setMounted] = useState(false);
+  const [livePulse, setLivePulse] = useState("Connecting live market feed...");
+
+  useEffect(() => {
+    setMounted(true);
+
+    const eventSource = new EventSource(`${API_BASE_URL}/api/live-feed`);
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setLivePulse(`${data.city} • ${data.inventory} live listings • $${Number(data.avg_price || 0).toLocaleString()}/mo avg`);
+      } catch {
+        setLivePulse("Live market feed connected");
+      }
+    };
+    eventSource.onerror = () => {
+      setLivePulse("Live market feed reconnecting...");
+    };
+
+    return () => eventSource.close();
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -108,10 +137,14 @@ export default function Home() {
 
     if (normalizedPlace) {
       const query = normalizedPlace;
-      x = x.filter((d) => {
-        const haystacks = [d.title, d.detail, d.place, d.provider].join(" ").toLowerCase();
+      const locationMatches = x.filter((d) => {
+        const haystacks = [d.title, d.detail, d.place, d.provider, ...d.tags].join(" ").toLowerCase();
         return haystacks.includes(query);
       });
+
+      if (locationMatches.length > 0) {
+        x = locationMatches;
+      }
     }
 
     if (sort === "Lowest total") return [...x].sort((a, b) => a.total - b.total);
@@ -121,12 +154,82 @@ export default function Home() {
 
   const change = (m: Mode) => {
     setMode(m);
-    setPlace(m === "apartments" ? "Frisco, TX" : "DFW Airport");
+    setPlace(m === "apartments" ? "Danville, CA" : "Los Angeles, CA");
     setNote(
       m === "apartments"
-        ? "I found 3 strong matches and included mandatory fees in every total."
-        : "I compared the full 5-day trip cost—not just the advertised daily price."
+        ? "I found live public rental listings for this city and included the current listing data."
+        : "I compared the full trip cost for this city and included the current rental/vehicle data available."
     );
+  };
+
+  const handleSearch = async (nextPlace = place.trim()) => {
+    const trimmed = nextPlace.trim();
+    if (!trimmed) {
+      setNote("Please enter a U.S. location to search.");
+      return;
+    }
+
+    let label = trimmed;
+    let city = trimmed;
+    let state = "";
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/location-search?query=${encodeURIComponent(trimmed)}`, { cache: "no-store" });
+      if (res.ok) {
+        const geo = await res.json();
+        if (Array.isArray(geo) && geo.length > 0) {
+          const matched = geo[0];
+          city = matched.city ?? trimmed.split(",")[0]?.trim() ?? trimmed;
+          state = matched.state ?? trimmed.split(",")[1]?.trim() ?? "";
+          label = matched.city ? `${matched.city}, ${matched.state ?? "USA"}` : matched.display_name;
+        }
+      }
+    } catch {
+      // keep the user-entered value as-is when geocoding fails
+    }
+
+    try {
+      const publicRes = await fetch(
+        `${API_BASE_URL}/api/public-rentals?city=${encodeURIComponent(city)}&state=${encodeURIComponent(state || "US")}&limit=6`,
+        { cache: "no-store" }
+      );
+      if (publicRes.ok) {
+        const publicData = await publicRes.json();
+        const publicResults = Array.isArray(publicData?.results) ? publicData.results : [];
+
+        if (publicResults.length > 0) {
+          const mapped = publicResults.map((item: any, index: number) => {
+            const base = fallbackData.find((d) => d.mode === mode) ?? fallbackData[0];
+            const numericPrice = typeof item.price === "string"
+              ? Number(item.price.replace(/[^0-9.]/g, ""))
+              : Number(item.price);
+
+            return {
+              ...base,
+              id: Number(`${Date.now()}${index}`),
+              mode,
+              title: item.title || base.title,
+              detail: item.location || base.detail,
+              place: item.location || base.place,
+              image: base.image,
+              price: Number.isFinite(numericPrice) ? numericPrice : base.price,
+              total: Number.isFinite(numericPrice) ? Math.round(numericPrice * 1.08) : base.total,
+              provider: item.source || base.provider,
+              badge: "Free public listing",
+              fees: "Public listing source",
+            };
+          });
+
+          setListings(mapped);
+          setNote(`Free public listings found in ${label}. This uses the no-cost city/state feed.`);
+          return;
+        }
+      }
+    } catch {
+      // fall back to the local sample listings below
+    }
+
+    setNote(`Updated results near ${label}. Known mandatory fees are included.`);
   };
 
   const ask = (e: React.FormEvent) => {
@@ -221,13 +324,25 @@ export default function Home() {
               </button>
             </>
           )}
+          <select
+            className="city-select"
+            value={place}
+            onChange={(e) => {
+              const nextValue = e.target.value;
+              setPlace(nextValue);
+              void handleSearch(nextValue);
+            }}
+            aria-label="Choose city"
+          >
+            {SAMPLE_CITIES.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
           <button
             className="go"
-            onClick={() => {
-              const nextPlace = place.trim() || (mode === "apartments" ? "Frisco, TX" : "DFW Airport");
-              setPlace(nextPlace);
-              setNote(`Updated results near ${nextPlace}. Known mandatory fees are included.`);
-            }}
+            onClick={() => void handleSearch()}
           >
             <I n="search" /> Search
           </button>
@@ -315,10 +430,10 @@ export default function Home() {
           <div className="results-head">
             <div>
               <h2>
-                {results.length} rentals near {place}
+                {mounted ? `${results.length} rentals near ${place}` : "Loading rentals..."}
               </h2>
               <p>
-                <i /> Prices checked 4 minutes ago
+                <i /> {livePulse}
               </p>
             </div>
             <div>
