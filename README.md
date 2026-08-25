@@ -37,53 +37,7 @@ Rental prices are rarely the final prices. RentWise brings apartments and vehicl
 
 ## System architecture
 
-```mermaid
-flowchart TB
-    USER((User))
-
-    subgraph CLIENT[Experience layer]
-        WEB[Next.js 16 + React 19]
-        STATE[Search, filters, map, saved & compare state]
-        WEB --- STATE
-    end
-
-    subgraph API[FastAPI application]
-        ROUTES[REST API routes]
-        SEARCH[Search service]
-        GEO[Location service]
-        RAG[Local RAG retrieval]
-    end
-
-    subgraph AGENTS[Grounded AI workflow]
-        INTENT[1. Intent]
-        RETRIEVE[2. Search]
-        RANK[3. Rank]
-        RESPOND[4. Respond]
-        VERIFY[5. Verify]
-        INTENT --> RETRIEVE --> RANK --> RESPOND --> VERIFY
-    end
-
-    subgraph DATA[Data sources]
-        PROVIDERS[Provider adapters]
-        PUBLIC[Public market fallback]
-        OSM[OpenStreetMap Nominatim]
-        KNOWLEDGE[(Local market knowledge)]
-    end
-
-    USER --> WEB
-    WEB -->|JSON over REST| ROUTES
-    ROUTES --> SEARCH
-    ROUTES --> GEO
-    ROUTES --> RAG
-    ROUTES --> INTENT
-    RETRIEVE --> SEARCH
-    SEARCH --> PROVIDERS
-    SEARCH --> PUBLIC
-    GEO --> OSM
-    RAG --> KNOWLEDGE
-    VERIFY --> ROUTES
-    ROUTES --> WEB
-```
+![RentWise AI system architecture](docs/assets/system-architecture.svg)
 
 ### Request flow
 
