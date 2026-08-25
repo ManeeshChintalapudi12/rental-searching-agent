@@ -1,155 +1,242 @@
+<div align="center">
+
 # RentWise AI
 
-RentWise AI is a full-stack rental discovery experience for comparing apartments and vehicles by their true total cost. It combines a polished Next.js interface with a FastAPI API and a bounded, explainable AI workflow for intent extraction, search, ranking, response generation, and verification.
+### One search. Every rental. The real best price.
 
-![RentWise AI frontend preview](frontend/public/og.png)
+An AI-assisted rental marketplace that compares apartments and vehicles by their complete cost—not just the advertised price.
 
-## Features
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tests](https://img.shields.io/badge/tests-9%20passing-16825D)](#quality-checks)
 
-- Search apartments and rental vehicles by U.S. city and state
-- Compare prices with mandatory fees included
-- Switch between list and map views, save listings, and compare up to three rentals
-- Refine searches using natural-language requests
-- Resolve locations with OpenStreetMap Nominatim and a local fallback
-- Use a no-key public market feed when paid provider APIs are unavailable
-- Ground AI responses in retrieved listings and verify prices and citations
+</div>
 
-## Architecture
+![RentWise AI rental search dashboard](docs/assets/rentwise-dashboard.png)
+
+## Why RentWise?
+
+Rental prices are rarely the final prices. RentWise brings apartments and vehicles into one search experience, normalizes their costs, includes known mandatory fees, and uses a grounded AI workflow to help users find and compare the strongest options.
+
+| Search smarter | Compare honestly | Decide confidently |
+| --- | --- | --- |
+| Search by location or describe a rental in natural language. | See recurring fees and true totals alongside advertised prices. | Save, rank, map, and compare up to three rentals side by side. |
+
+## Product highlights
+
+- **Two rental modes** — search apartments and rental vehicles from one interface
+- **True-cost pricing** — expose known mandatory fees and complete rental totals
+- **AI-assisted discovery** — translate natural-language requests into structured requirements
+- **Grounded recommendations** — rank retrieved listings and verify generated prices and citations
+- **Location intelligence** — use OpenStreetMap geocoding with resilient local fallbacks
+- **Interactive exploration** — filter, sort, save, compare, and switch between list and map views
+- **Provider-ready backend** — add licensed inventory sources through a clean adapter interface
+- **Graceful degradation** — remain demo-ready with local listings and a no-key public market feed
+
+## System architecture
 
 ```mermaid
-flowchart LR
-    U[User] --> UI[Next.js 16 / React 19 frontend]
-    UI -->|REST / JSON| API[FastAPI backend]
+flowchart TB
+    USER((User))
 
-    API --> GEO[Location lookup]
-    GEO --> OSM[OpenStreetMap Nominatim]
-    GEO --> CITY[Local city fallback]
+    subgraph CLIENT[Experience layer]
+        WEB[Next.js 16 + React 19]
+        STATE[Search, filters, map, saved & compare state]
+        WEB --- STATE
+    end
 
-    API --> SEARCH[Search service]
-    SEARCH --> PROVIDERS[Rental providers]
-    PROVIDERS --> MOCK[Mock provider]
-    PROVIDERS --> PUBLIC[Public market feed]
+    subgraph API[FastAPI application]
+        ROUTES[REST API routes]
+        SEARCH[Search service]
+        GEO[Location service]
+        RAG[Local RAG retrieval]
+    end
 
-    API --> ORCH[AI orchestrator]
-    ORCH --> INTENT[Intent agent]
-    INTENT --> AGENTSEARCH[Search agent]
-    AGENTSEARCH --> RANK[Ranking agent]
-    RANK --> RESPONSE[Response agent]
-    RESPONSE --> VERIFY[Verification agent]
+    subgraph AGENTS[Grounded AI workflow]
+        INTENT[1. Intent]
+        RETRIEVE[2. Search]
+        RANK[3. Rank]
+        RESPOND[4. Respond]
+        VERIFY[5. Verify]
+        INTENT --> RETRIEVE --> RANK --> RESPOND --> VERIFY
+    end
 
-    API --> RAG[Local RAG / vector retrieval]
-    VERIFY --> API
-    RAG --> API
-    API --> UI
+    subgraph DATA[Data sources]
+        PROVIDERS[Provider adapters]
+        PUBLIC[Public market fallback]
+        OSM[OpenStreetMap Nominatim]
+        KNOWLEDGE[(Local market knowledge)]
+    end
+
+    USER --> WEB
+    WEB -->|JSON over REST| ROUTES
+    ROUTES --> SEARCH
+    ROUTES --> GEO
+    ROUTES --> RAG
+    ROUTES --> INTENT
+    RETRIEVE --> SEARCH
+    SEARCH --> PROVIDERS
+    SEARCH --> PUBLIC
+    GEO --> OSM
+    RAG --> KNOWLEDGE
+    VERIFY --> ROUTES
+    ROUTES --> WEB
 ```
 
-The frontend calls the FastAPI service through `NEXT_PUBLIC_API_URL`. Standard searches use the search service and provider adapters. Conversational searches follow the bounded agent pipeline, while the local RAG layer supplies market context. Location lookup falls back to built-in city data when OpenStreetMap is unavailable.
+### Request flow
 
-## Tech stack
+1. The Next.js client sends structured search requests or conversational prompts to FastAPI.
+2. Standard searches are normalized by the search service and dispatched to provider adapters.
+3. Conversational searches pass through a bounded pipeline: intent extraction, retrieval, ranking, response generation, and verification.
+4. The verification agent checks generated claims against retrieved listings before returning the answer.
+5. Market questions can use local vector retrieval, while location queries use OpenStreetMap with a built-in fallback.
 
-| Layer | Technology |
+## Technology
+
+| Area | Stack |
 | --- | --- |
-| Frontend | Next.js 16, React 19, TypeScript, CSS |
-| Backend | FastAPI, Uvicorn, Pydantic, HTTPX |
-| AI | Agent orchestration, local RAG, vector retrieval |
-| Data | OpenStreetMap Nominatim, public fallback feed, provider adapters |
-| Testing | Pytest |
+| Web | Next.js 16, React 19, TypeScript, responsive CSS |
+| API | FastAPI, Uvicorn, Pydantic, HTTPX |
+| Intelligence | Multi-agent orchestration, local RAG, vector retrieval |
+| Integrations | OpenStreetMap Nominatim, provider adapters, public fallback feed |
+| Quality | Pytest, TypeScript compiler, Next.js production build |
+| Infrastructure | Docker Compose, optional PostgreSQL 16 |
 
-## Project structure
+## Repository layout
 
 ```text
 rental-searching-app/
-|-- frontend/               # Next.js user interface
-|   |-- app/                # App Router pages and styles
-|   `-- public/             # Static assets
-|-- backend/                # FastAPI service
-|   |-- app/agents/         # Bounded AI agent workflow
-|   |-- app/providers/      # Rental data adapters
-|   |-- app/services/       # Search orchestration
-|   `-- tests/              # API and AI tests
-|-- agentic/                # Standalone RAG and graph patterns
-|-- docker-compose.yml      # Optional PostgreSQL service
-|-- package.json            # Root development commands
-`-- README.md
+├── frontend/
+│   ├── app/                    # Next.js page, layout, and UI styles
+│   └── public/                 # Static product assets
+├── backend/
+│   ├── app/
+│   │   ├── agents/             # Intent → search → rank → respond → verify
+│   │   ├── providers/          # Rental inventory adapters
+│   │   ├── services/           # Search orchestration
+│   │   ├── ai_stack.py         # Local retrieval pipeline
+│   │   └── main.py             # FastAPI application and routes
+│   └── tests/                  # API and AI behavior tests
+├── agentic/                    # Standalone RAG and graph patterns
+├── docs/assets/                # README product imagery
+├── docker-compose.yml          # Optional PostgreSQL service
+└── package.json                # Full-stack developer commands
 ```
 
-## Run locally
+## Getting started
 
 ### Prerequisites
 
-- Node.js 20 or newer
-- Python 3.11 or newer
+- Node.js 20+
+- Python 3.11+
 
-### 1. Install dependencies
+### Installation
 
 ```powershell
+git clone https://github.com/ManeeshChintalapudi12/rental-searching-agent.git
+cd rental-searching-agent
+
 npm install
 npm --prefix frontend install
+
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r backend\requirements.txt
-```
-
-### 2. Configure the environment
-
-```powershell
 Copy-Item .env.example .env
 ```
 
-The application works without a paid rental API key. To use a separately deployed backend, set:
+No paid rental API key is required for the included development experience.
 
-```env
-NEXT_PUBLIC_API_URL=https://your-backend.example.com
-```
-
-### 3. Start the full stack
+### Run the full stack
 
 ```powershell
 npm run dev
 ```
 
-- Frontend: <http://localhost:3000>
-- Backend: <http://127.0.0.1:8000>
-- Interactive API docs: <http://127.0.0.1:8000/docs>
+| Service | URL |
+| --- | --- |
+| Web application | <http://localhost:3000> |
+| API | <http://127.0.0.1:8000> |
+| OpenAPI documentation | <http://127.0.0.1:8000/docs> |
 
-## Build and test
+To connect the frontend to a separately hosted API:
+
+```env
+NEXT_PUBLIC_API_URL=https://your-api.example.com
+```
+
+## API overview
+
+| Method | Route | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Check API health and version |
+| `GET` | `/api/location-search` | Resolve a U.S. location |
+| `GET` | `/api/public-rentals` | Retrieve fallback market listings |
+| `GET` | `/api/ai/rag` | Ask a market-context question |
+| `GET` | `/api/live-feed` | Stream a sample market pulse |
+| `POST` | `/api/v1/search` | Run a structured rental search |
+| `POST` | `/api/v1/chat` | Run the grounded assistant workflow |
+| `GET` | `/api/v1/listings/{id}` | Retrieve normalized listing details |
+
+Example:
 
 ```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/location-search?query=Danville,CA"
+```
+
+## Quality checks
+
+```powershell
+# Optimized frontend build + TypeScript validation
 npm run build
+
+# Backend API and AI tests
 .venv\Scripts\python.exe -m pytest -q backend\tests
 ```
 
-Check the running API:
+Current verification:
 
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health
-```
-
-## Main API endpoints
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/health` | Service health check |
-| `GET` | `/api/location-search?query=Danville,CA` | U.S. location lookup |
-| `GET` | `/api/public-rentals?city=Danville&state=CA&limit=5` | Public fallback listings |
-| `GET` | `/api/ai/rag?question=...` | Local market-context retrieval |
-| `POST` | `/api/v1/search` | Structured rental search |
-| `POST` | `/api/v1/chat` | Agent-assisted rental search |
-| `GET` | `/api/v1/listings/{listing_id}` | Listing details |
+- Next.js production build: **passing**
+- TypeScript validation: **passing**
+- Backend test suite: **9 passing**
 
 ## Deployment
 
-Deploy `frontend/` to Vercel and configure `NEXT_PUBLIC_API_URL` with the public backend URL. Deploy `backend/` to a Python host such as Render or Railway with this start command:
+### Frontend
+
+Deploy the `frontend/` directory to Vercel and set `NEXT_PUBLIC_API_URL` to the public FastAPI URL.
+
+### Backend
+
+Install `backend/requirements.txt` and start the application from the backend directory:
 
 ```powershell
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-The included Docker Compose file starts the optional PostgreSQL 16 service:
+### Optional database
 
 ```powershell
 docker compose up --build
 ```
 
-## Data note
+This starts the included PostgreSQL 16 service. The current demo flow does not require it.
 
-The current public feed and mock provider are suitable for development and portfolio demonstrations. They are not a substitute for a licensed, real-time rental inventory provider in production.
+## Production roadmap
+
+- Connect licensed apartment and vehicle inventory providers
+- Persist users, searches, favorites, and comparisons in PostgreSQL
+- Add authentication and provider credential management
+- Replace the illustrative map with a production mapping SDK
+- Add observability, rate limits, caching, and integration tests
+
+## Data disclaimer
+
+The bundled mock provider and public fallback feed are intended for development and portfolio demonstrations. Production use requires licensed, real-time inventory and pricing sources.
+
+<div align="center">
+
+Built as a practical full-stack demonstration of transparent rental search and grounded AI.
+
+</div>
