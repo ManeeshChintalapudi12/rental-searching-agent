@@ -1,109 +1,155 @@
 # RentWise AI
 
-A portfolio-ready rental marketplace and AI assistant built as a production-style monorepo. The app is organized by responsibility: UI in the frontend folder, backend APIs in the backend folder, and AI/RAG logic in the agentic folder.
+RentWise AI is a full-stack rental discovery experience for comparing apartments and vehicles by their true total cost. It combines a polished Next.js interface with a FastAPI API and a bounded, explainable AI workflow for intent extraction, search, ranking, response generation, and verification.
 
-## Product summary
+![RentWise AI frontend preview](frontend/public/og.png)
 
-- Frontend: Next.js UI for searching apartments and vehicles by city
-- Backend: FastAPI service for location search, public rental feeds, and rental APIs
-- Agentic layer: RAG and LangGraph-style orchestration for market-aware answers
-- Data path: OpenStreetMap geocoding plus no-key public fallback data for demo-ready U.S. searches
+## Features
 
-## Repository structure
+- Search apartments and rental vehicles by U.S. city and state
+- Compare prices with mandatory fees included
+- Switch between list and map views, save listings, and compare up to three rentals
+- Refine searches using natural-language requests
+- Resolve locations with OpenStreetMap Nominatim and a local fallback
+- Use a no-key public market feed when paid provider APIs are unavailable
+- Ground AI responses in retrieved listings and verify prices and citations
+
+## Architecture
+
+```mermaid
+flowchart LR
+    U[User] --> UI[Next.js 16 / React 19 frontend]
+    UI -->|REST / JSON| API[FastAPI backend]
+
+    API --> GEO[Location lookup]
+    GEO --> OSM[OpenStreetMap Nominatim]
+    GEO --> CITY[Local city fallback]
+
+    API --> SEARCH[Search service]
+    SEARCH --> PROVIDERS[Rental providers]
+    PROVIDERS --> MOCK[Mock provider]
+    PROVIDERS --> PUBLIC[Public market feed]
+
+    API --> ORCH[AI orchestrator]
+    ORCH --> INTENT[Intent agent]
+    INTENT --> AGENTSEARCH[Search agent]
+    AGENTSEARCH --> RANK[Ranking agent]
+    RANK --> RESPONSE[Response agent]
+    RESPONSE --> VERIFY[Verification agent]
+
+    API --> RAG[Local RAG / vector retrieval]
+    VERIFY --> API
+    RAG --> API
+    API --> UI
+```
+
+The frontend calls the FastAPI service through `NEXT_PUBLIC_API_URL`. Standard searches use the search service and provider adapters. Conversational searches follow the bounded agent pipeline, while the local RAG layer supplies market context. Location lookup falls back to built-in city data when OpenStreetMap is unavailable.
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript, CSS |
+| Backend | FastAPI, Uvicorn, Pydantic, HTTPX |
+| AI | Agent orchestration, local RAG, vector retrieval |
+| Data | OpenStreetMap Nominatim, public fallback feed, provider adapters |
+| Testing | Pytest |
+
+## Project structure
 
 ```text
 rental-searching-app/
-├── frontend/          # Next.js app and UI logic
-├── backend/           # FastAPI backend, providers, models, and tests
-├── agentic/           # AI/RAG and LangGraph workflow logic
-├── .env.example
-├── .gitignore
-├── docker-compose.yml
-├── README.md
-├── package.json
-├── package-lock.json
-└── .venv/
+|-- frontend/               # Next.js user interface
+|   |-- app/                # App Router pages and styles
+|   `-- public/             # Static assets
+|-- backend/                # FastAPI service
+|   |-- app/agents/         # Bounded AI agent workflow
+|   |-- app/providers/      # Rental data adapters
+|   |-- app/services/       # Search orchestration
+|   `-- tests/              # API and AI tests
+|-- agentic/                # Standalone RAG and graph patterns
+|-- docker-compose.yml      # Optional PostgreSQL service
+|-- package.json            # Root development commands
+`-- README.md
 ```
 
-## Local development
+## Run locally
 
-### 1) Install root dependencies
+### Prerequisites
+
+- Node.js 20 or newer
+- Python 3.11 or newer
+
+### 1. Install dependencies
 
 ```powershell
-cd "c:\rental-searching-app"
 npm install
+npm --prefix frontend install
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 ```
 
-### 2) Start the app locally
+### 2. Configure the environment
 
 ```powershell
-cd "c:\rental-searching-app"
+Copy-Item .env.example .env
+```
+
+The application works without a paid rental API key. To use a separately deployed backend, set:
+
+```env
+NEXT_PUBLIC_API_URL=https://your-backend.example.com
+```
+
+### 3. Start the full stack
+
+```powershell
 npm run dev
 ```
 
-This starts the frontend and backend together using the final folder structure.
+- Frontend: <http://localhost:3000>
+- Backend: <http://127.0.0.1:8000>
+- Interactive API docs: <http://127.0.0.1:8000/docs>
 
-### 3) Run API tests
+## Build and test
 
 ```powershell
-cd "c:\rental-searching-app"
-python -m pytest -q backend/tests
+npm run build
+.venv\Scripts\python.exe -m pytest -q backend\tests
 ```
 
-### Useful URLs
+Check the running API:
 
-- http://localhost:3000
-- http://127.0.0.1:8000/health
-- http://127.0.0.1:8000/api/public-rentals?city=Danville&state=CA&limit=5
-- http://127.0.0.1:8000/api/live-feed
-
-## Deployment readiness
-
-This repo is aligned for real product workflows:
-
-- clean frontend/backend/agentic separation
-- environment-based config via `.env`
-- Docker support for local stack orchestration
-- searchable market intelligence with a no-key fallback path
-
-### Frontend deployment
-
-Use Vercel with:
-
-```env
-NEXT_PUBLIC_API_URL=https://your-backend-url
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-### Backend deployment
+## Main API endpoints
 
-Use Render or Railway and expose the FastAPI app on port 8000.
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Service health check |
+| `GET` | `/api/location-search?query=Danville,CA` | U.S. location lookup |
+| `GET` | `/api/public-rentals?city=Danville&state=CA&limit=5` | Public fallback listings |
+| `GET` | `/api/ai/rag?question=...` | Local market-context retrieval |
+| `POST` | `/api/v1/search` | Structured rental search |
+| `POST` | `/api/v1/chat` | Agent-assisted rental search |
+| `GET` | `/api/v1/listings/{listing_id}` | Listing details |
 
-```bash
-cd backend
-pip install -r requirements.txt
+## Deployment
+
+Deploy `frontend/` to Vercel and configure `NEXT_PUBLIC_API_URL` with the public backend URL. Deploy `backend/` to a Python host such as Render or Railway with this start command:
+
+```powershell
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### Docker
+The included Docker Compose file starts the optional PostgreSQL 16 service:
 
-```bash
+```powershell
 docker compose up --build
 ```
 
-## AI story
+## Data note
 
-The application includes:
-
-- retrieval-augmented generation
-- vector document ingestion
-- LangGraph-style orchestration pattern
-- market-aware answers for U.S. rental searches
-
-## Real-data path
-
-The current implementation uses a no-key public fallback:
-
-- OpenStreetMap Nominatim geocoding
-- U.S. city/state matching for searchable markets
-- public market feed for demo-ready results
-- adapter-ready structure for future licensed data APIs
+The current public feed and mock provider are suitable for development and portfolio demonstrations. They are not a substitute for a licensed, real-time rental inventory provider in production.
