@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class RentalType(StrEnum):
@@ -50,6 +50,16 @@ class SearchRequest(BaseModel):
     max_total_price: float | None = Field(default=None, ge=0)
     features: list[str] = Field(default_factory=list)
     sort_by: str = "recommended"
+
+    @model_validator(mode="after")
+    def check_date_range(self) -> "SearchRequest":
+        if (
+            self.start_date is not None
+            and self.end_date is not None
+            and self.end_date < self.start_date
+        ):
+            raise ValueError("end_date must be on or after start_date")
+        return self
 
 
 class SearchResponse(BaseModel):

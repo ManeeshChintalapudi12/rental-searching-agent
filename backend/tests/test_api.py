@@ -27,6 +27,35 @@ def test_search_apartments_by_total_price() -> None:
     assert payload["listings"][0]["id"] == "apt-002"
 
 
+def test_search_rejects_reversed_date_range() -> None:
+    response = client.post(
+        "/api/v1/search",
+        json={
+            "rental_type": "apartment",
+            "location": "Frisco, TX",
+            "start_date": "2026-12-10",
+            "end_date": "2026-12-05",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_search_accepts_valid_date_range() -> None:
+    response = client.post(
+        "/api/v1/search",
+        json={
+            "rental_type": "apartment",
+            "location": "Frisco, TX",
+            "start_date": "2026-12-05",
+            "end_date": "2026-12-10",
+            "max_total_price": 1450,
+            "sort_by": "lowest_total",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+
+
 def test_listing_not_found() -> None:
     response = client.get("/api/v1/listings/missing")
     assert response.status_code == 404
