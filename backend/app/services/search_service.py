@@ -11,8 +11,22 @@ class SearchService:
         for provider in self.providers:
             results.extend(await provider.search(request))
 
-        # Phase 2 extension point: normalize currencies, deduplicate listings,
-        # and compute deal scores before returning results.
+        # Same listing can come back from more than one provider (e.g. an
+        # aggregator and the source marketplace). Keep the first occurrence
+        # of each provider_listing_id so callers never see the same unit
+        # twice; the source marketplace's copy wins because providers are
+        # queried in priority order.
+        seen: set[str] = set()
+        unique: list[RentalListing] = []
+        for listing in results:
+            if listing.provider_listing_id in seen:
+                continue
+            seen.add(listing.provider_listing_id)
+            unique.append(listing)
+        results = unique
+
+        # Phase 2 extension point: normalize currencies and compute deal
+        # scores before returning results.
         return SearchResponse(
             query=request,
             count=len(results),
